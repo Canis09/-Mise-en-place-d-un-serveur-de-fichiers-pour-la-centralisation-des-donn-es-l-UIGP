@@ -1,0 +1,59 @@
+Configuration du routeur Mikrotik
+
+1-Renommer les interfaces
+
+/interface set ether1 name=wan
+/interface set ether2 name=lan3
+/interface set ether3 name=lan1 
+/interface set ether4 name=lan2
+
+
+2-Attribuer une adresse IP au l'interface
+
+/ip address add address=192.168.15.1/24 interface=lan1
+/ip address add address=192.168.14.1/24 interface=lan2
+/ip address add address=192.168.13.1/24 interface=lan3
+
+
+4-Activer DHCP Client et Serveur sur les interfaces
+
+#DHCP Client sur wan
+/ip dhcp-client add interface=wan
+#DHCP Serveur sur lan2
+/ip pool add name=dhcp_pool_lan2 ranges=192.168.14.2-192.168.14.254
+/ip dhcp-server network add address=192.168.14.0/24 gateway=192.168.14.1 dns-server=192.168.15.10,8.8.8.8
+/ip dhcp-server add interface=lan2 name=dhcp_server_lan2 address-pool=dhcp_pool_lan2 lease-time=30m 
+#DHCP Serveur sur lan3
+/ip pool add name=dhcp_pool_lan3 ranges=192.168.13.2-192.168.13.254
+/ip dhcp-server network add address=192.168.13.0/24 gateway=192.168.13.1 dns-server=192.168.15.10,8.8.8.8
+/ip dhcp-server add interface=lan3 name=dhcp_server_lan3 address-pool=dhcp_pool_lan3 lease-time=30m 
+
+4-Nat
+
+/ip firewall nat add chain=srcnat out-interface=wan action=masquerade log=yes log-prefix=Log-nat-wan
+
+5-Désactiver les services du routeur
+
+/ip service disable telnet
+/ip service disable www
+/ip service disable ftp
+/ip service disable api
+/ip service disable api-ssl
+
+6-Firewall
+
+/ip firewall filter
+# Autoriser les connexions établies
+add chain=forward connection-state=established,related action=accept comment="Connexions existantes" 
+# Autoriser le partage de fichier lan2->lan1
+add chain=forward in-interface=lan2 out-interface=lan1 protocol=tcp dst-port=445 action=accept comment="SMB TCP lan2->lan1"  
+add chain=forward in-interface=lan2 out-interface=lan1 protocol=udp dst-port=445 action=accept comment="SMB UDP lan2->lan1"  
+add chain=forward in-interface=lan2 out-interface=lan1 protocol=udp dst-port=53 action=accept comment="DNS lan2->lan1"
+# Autoriser le partage de fichier lan3->lan1
+add chain=forward in-interface=lan3 out-interface=lan1 protocol=tcp dst-port=445 action=accept comment="SMB TCP lan3->lan1"  
+add chain=forward in-interface=lan3 out-interface=lan1 protocol=udp dst-port=445 action=accept comment="SMB UDP lan3->lan1"  
+add chain=forward in-interface=lan3 out-interface=lan1 protocol=udp dst-port=53 action=accept comment="DNS lan3->lan1"
+# Isolation stricte
+add chain=forward in-interface=wan out-interface=lan1 action=drop comment="drop wan->lan1" log=yes log-prefix=drop_wan_lan1 
+add chain=forward in-interface=lan2 out-interface=lan1 action=drop comment="drop lan2->lan1" log=yes log-prefix=drop_lan2_lan1
+add chain=forward in-interface=lan3 out-interface=lan1 action=drop comment="drop lan3->lan1" log=yes log-prefix=drop_lan3_lan1
