@@ -1,41 +1,38 @@
 Configuration mikrotik
 
-Renommer les interfaces
+1-Renommer les interfaces
 /interface set ether1 name=wan
 /interface set ether3 name=lan 
 
-2- Activer le client DHCP sur l'interface lan
-/ip dhcp-client add interface=wan
-
-3 Attribuer une adresse IP au l'interface
+2-Attribuer une adresse IP au l'interface
 /ip address add address=192.168.15.1/24 interface=ether2
 /ip address add address=192.168.14.1/24 interface=lan
 
-4.  Activer DHCP ether2 sur l'interface lan
-#DHCP Client
+3-Activation du DHCP sur les interfaces
+#DHCP Client sur l'interface wan
 /ip dhcp-client add interface=wan
-#DHCP ether2
+#DHCP Serveur sur l'interface lan
 /ip pool add name=dhcp_pool_lan ranges=192.168.14.2-192.168.14.254
 /ip dhcp-server network add address=192.168.14.0/24 gateway=192.168.14.1 dns-server=192.168.15.10,8.8.8.8
 /ip dhcp-server add interface=lan name=dhcp_server_lan address-pool=dhcp_pool_lan lease-time=30m 
 
-5 Nat
-/ip firewall nat add chain=srcnat out-interface=wan action=masquerade log=yes log-prefix=Log-nat-wan
-
-6 Désactiver les services du routeur
+4- Désactiver les services du routeur
 /ip service disable telnet
 /ip service disable www
 /ip service disable ftp
 /ip service disable api
 /ip service disable api-ssl
 
-7. Firewall
+5-Nat
+/ip firewall nat add chain=srcnat out-interface=wan action=masquerade log=yes log-prefix=Log-nat-wan
+
+6-Firewall
 /ip firewall filter
 # Autoriser les connexions établies
 add chain=forward connection-state=established,related action=accept comment="Connexions existantes" 
 # Autoriser le partage de fichier 
-add chain=forward in-interface=lan out-interface=ether2 protocol=tcp dst-port=445 action=accept comment="SMB TCP lan->ether2"  
-add chain=forward in-interface=lan out-interface=ether2 protocol=udp dst-port=445 action=accept comment="SMB UDP lan->ether2"  
+add chain=forward in-interface=lan out-interface=ether2 protocol=tcp dst-port=445 action=accept comment="SMB TCP lan->ether2" 
+add chain=forward in-interface=lan out-interface=ether2 protocol=udp dst-port=445 action=accept comment="SMB UDP lan->ether2" 
 add chain=forward in-interface=lan out-interface=ether2 protocol=udp dst-port=53 action=accept comment="DNS lan->ether2"
 # Isolation stricte
 add chain=forward in-interface=wan out-interface=lan action=drop comment="drop wan->lan" log=yes log-prefix=drop wan->lan
@@ -46,3 +43,4 @@ add chain=forward in-interface=lan out-interface=ether2 action=drop log=yes log-
 #  Blocage par défaut
 add chain=forward action=drop log=yes log-prefix=drop par défaut
   
+
